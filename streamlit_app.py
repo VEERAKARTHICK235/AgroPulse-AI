@@ -108,8 +108,8 @@ def generate_pdf(disease, cure, image):
         return None
 
 # Streamlit UI
-st.set_page_config(page_title="AgroPulse AI - Gemini Powered", page_icon="🌿")
-st.title("🌿 AgroPulse AI - Plant Disease Detector (Gemini API)")
+st.set_page_config(page_title="AgroPulse AI", page_icon="🌿")
+st.title("🌿 AgroPulse AI - Plant Disease Detector")
 st.markdown("Upload a leaf image to get the **plant disease** and its **suggested cures** using Gemini AI.")
 
 # Upload Image
