@@ -6,8 +6,8 @@ from io import BytesIO
 from fpdf import FPDF
 import re
 
-# Set your Gemini API Key
-GEMINI_API_KEY = "AIzaSyCVDQqukptLYzFObQFieAaUS8uR0nmksJI"  # 🔒 Replace with your actual API key
+# 🔐 Gemini API
+GEMINI_API_KEY = "AIzaSyCVDQqukptLYzFObQFieAaUS8uR0nmksJI"  # Replace with your actual key
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
 # Convert image to base64
@@ -16,7 +16,7 @@ def image_to_base64(image):
     image.save(buffered, format="JPEG")
     return base64.b64encode(buffered.getvalue()).decode()
 
-# Send request to Gemini API
+# Gemini API call
 def get_gemini_prediction(base64_image):
     headers = {"Content-Type": "application/json"}
     prompt = """
@@ -27,7 +27,7 @@ Return the output in this format:
 
 Disease: <disease name>
 Cure: <short cure or solution>
-    """
+"""
     request_body = {
         "contents": [
             {
@@ -50,7 +50,7 @@ Cure: <short cure or solution>
     except Exception as e:
         return f"❌ Error: Could not get a prediction. {str(e)}"
 
-# Extract Disease and Cure from text
+# Extract Disease and Cure
 def extract_disease_and_cure(text):
     disease_match = re.search(r'Disease:\s*(.+)', text, re.IGNORECASE)
     cure_match = re.search(r'Cure:\s*(.+)', text, re.IGNORECASE)
@@ -59,7 +59,7 @@ def extract_disease_and_cure(text):
     cure = cure_match.group(1).strip() if cure_match else "Not found"
     return disease, cure
 
-# Generate PDF
+# Generate PDF and return as BytesIO
 def generate_pdf(disease, cure):
     try:
         pdf = FPDF()
@@ -72,12 +72,12 @@ def generate_pdf(disease, cure):
         pdf.cell(0, 10, f"Disease: {disease}", ln=True)
         pdf.multi_cell(0, 10, f"Cure: {cure}")
 
-        pdf_output = BytesIO()
-        pdf.output(pdf_output)
-        pdf_output.seek(0)
-        return pdf_output
+        pdf_output = pdf.output(dest="S")
+        if isinstance(pdf_output, str):  # If it's string, encode
+            pdf_output = pdf_output.encode("latin-1")
+        return BytesIO(pdf_output)
     except Exception as e:
-        st.error("❌ PDF generation failed internally, but the prediction result is still shown above.")
+        st.error(f"❌ PDF generation failed internally: {e}")
         return None
 
 # Streamlit UI
@@ -85,10 +85,10 @@ st.set_page_config(page_title="AgroPulse AI - Gemini Powered", page_icon="🌿")
 st.title("🌿 AgroPulse AI - Plant Disease Detector (Gemini API)")
 st.markdown("Upload a leaf image to get the **plant disease** and its **suggested cure** using Gemini AI.")
 
-# Upload image
+# Upload Image
 uploaded_file = st.file_uploader("📷 Choose a plant leaf image...", type=["jpg", "jpeg", "png"])
 
-# Toggle for image preview
+# Toggle to preview image
 show_image = st.toggle("👁️ Show Uploaded Image", value=False)
 
 if uploaded_file:
@@ -103,10 +103,8 @@ if uploaded_file:
     st.subheader("🧪 Diagnosis Result")
     disease, cure = extract_disease_and_cure(result_text)
 
-    # Display as table
     st.table({"Plant Disease": [disease], "Suggested Cure": [cure]})
 
-    # Generate and download PDF
     pdf_data = generate_pdf(disease, cure)
     if pdf_data:
         st.download_button(
