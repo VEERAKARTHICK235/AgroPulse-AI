@@ -6,121 +6,120 @@ from io import BytesIO
 from fpdf import FPDF
 import re
 
-# === Gemini API Configuration ===
+# 🔐 Gemini API
 GEMINI_API_KEY = "AIzaSyCVDQqukptLYzFObQFieAaUS8uR0nmksJI"  # Replace with your actual key
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
-# === Helper: Convert image to base64 ===
+# Convert image to base64
 def image_to_base64(image):
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
     return base64.b64encode(buffered.getvalue()).decode()
 
-# === Gemini API Call ===
-def get_gemini_predictions(base64_image):
+# Gemini API call
+def get_gemini_prediction(base64_image):
     headers = {"Content-Type": "application/json"}
     prompt = """
-You are a professional plant disease expert. An image of a leaf is uploaded.
-Provide a list of the top 3 possible plant diseases and their respective cures.
+You are an expert plant pathologist. An image of a leaf is uploaded.
+Identify the plant disease based on the image and suggest a clear cure.
 
-Return strictly in this format:
+Return the output in this format:
 
-Disease 1: <name>
-Cure 1: <solution>
-
-Disease 2: <name>
-Cure 2: <solution>
-
-Disease 3: <name>
-Cure 3: <solution>
-    """
-    body = {
-        "contents": [{
-            "parts": [
-                {"text": prompt},
-                {"inline_data": {"mime_type": "image/jpeg", "data": base64_image}}
-            ]
-        }]
+Disease: <disease name>
+Cure: <short cure or solution>
+"""
+    request_body = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inline_data": {
+                            "mime_type": "image/jpeg",
+                            "data": base64_image
+                        }
+                    }
+                ]
+            }
+        ]
     }
     try:
-        response = requests.post(GEMINI_API_URL, headers=headers, json=body)
-        data = response.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+        response = requests.post(GEMINI_API_URL, headers=headers, json=request_body)
+        result = response.json()
+        return result["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
-        return f"❌ Error: Could not get prediction. {e}"
+        return f"❌ Error: Could not get a prediction. {str(e)}"
 
-# === Helper: Parse multiple diseases and cures ===
-def extract_multiple_disease_cure(text):
-    pattern = r"Disease\s*(\d+):\s*(.*?)\s*Cure\s*\1:\s*(.*?)(?=(\nDisease|\Z))"
-    matches = re.findall(pattern, text, re.DOTALL | re.IGNORECASE)
-    results = [{"Disease": m[1].strip(), "Cure": m[2].strip()} for m in matches]
-    return results
+# Extract Disease and Cure
+def extract_disease_and_cure(text):
+    disease_match = re.search(r'Disease:\s*(.+)', text, re.IGNORECASE)
+    cure_match = re.search(r'Cure:\s*(.+)', text, re.IGNORECASE)
 
-# === Generate PDF with table ===
-def generate_pdf(results):
+    disease = disease_match.group(1).strip() if disease_match else "Not found"
+    cure = cure_match.group(1).strip() if cure_match else "Not found"
+    return disease, cure
+
+# Generate PDF and return as BytesIO
+def generate_pdf(disease, cure):
     try:
         pdf = FPDF()
         pdf.add_page()
+
+        # Title
         pdf.set_font("Arial", "B", 14)
         pdf.cell(0, 10, "AgroPulse AI - Plant Diagnosis Report", ln=True)
 
-        # Table header
+        # Disease (bold + red)
+        pdf.ln(10)
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(90, 10, "Disease", 1, 0, 'C')
-        pdf.cell(90, 10, "Cure", 1, 1, 'C')
+        pdf.set_text_color(220, 50, 50)  # Red color
+        pdf.cell(0, 10, f"Disease: {disease}", ln=True)
 
-        # Table rows
-        pdf.set_font("Arial", "", 11)
-        for item in results:
-            y_before = pdf.get_y()
-            pdf.multi_cell(90, 10, item["Disease"], border=1)
-            y_after = pdf.get_y()
-            height = y_after - y_before
+        # Cure (italic + black)
+        pdf.set_text_color(0, 0, 0)  # Reset to black
+        pdf.set_font("Arial", "I", 12)  # Italic font
+        pdf.multi_cell(0, 10, f"Cure: {cure}")
 
-            pdf.set_xy(100, y_before)
-            pdf.multi_cell(90, 10, item["Cure"], border=1)
-            pdf.ln()
-
-        pdf_output = BytesIO()
-        pdf.output(pdf_output)
-        pdf_output.seek(0)
-        return pdf_output
+        # Return PDF as BytesIO
+        pdf_output = pdf.output(dest="S")
+        if isinstance(pdf_output, str):
+            pdf_output = pdf_output.encode("latin-1")
+        return BytesIO(pdf_output)
 
     except Exception as e:
-        st.error(f"❌ PDF generation failed: {e}")
+        st.error(f"❌ PDF generation failed internally: {e}")
         return None
 
+# Streamlit UI
+st.set_page_config(page_title="AgroPulse AI - Gemini Powered", page_icon="🌿")
+st.title("🌿 AgroPulse AI - Plant Disease Detector (Gemini API)")
+st.markdown("Upload a leaf image to get the **plant disease** and its **suggested cure** using Gemini AI.")
 
-# === Streamlit UI ===
-st.set_page_config(page_title="AgroPulse AI", page_icon="🌿")
-st.title("🌿 AgroPulse AI - Multi-Disease Plant Diagnosis (Gemini)")
-st.markdown("Upload a leaf image to get the **top 3 plant diseases** and their **suggested cures** using Gemini AI.")
+# Upload Image
+uploaded_file = st.file_uploader("📷 Choose a plant leaf image...", type=["jpg", "jpeg", "png"])
 
-uploaded_file = st.file_uploader("📷 Upload a leaf image", type=["jpg", "jpeg", "png"])
-show_img = st.toggle("👁️ Show Image", value=False)
+# Toggle to preview image
+show_image = st.toggle("👁️ Show Uploaded Image", value=False)
 
 if uploaded_file:
     image = Image.open(uploaded_file)
-    if show_img:
-        st.image(image, caption="Uploaded Leaf", use_column_width=True)
+    if show_image:
+        st.image(image, caption="🖼️ Uploaded Image", use_column_width=True)
 
     with st.spinner("🔍 Analyzing with Gemini..."):
         base64_img = image_to_base64(image)
-        raw_result = get_gemini_predictions(base64_img)
+        result_text = get_gemini_prediction(base64_img)
 
-    st.subheader("🧪 Prediction Results")
-    results = extract_multiple_disease_cure(raw_result)
+    st.subheader("🧪 Diagnosis Result")
+    disease, cure = extract_disease_and_cure(result_text)
 
-    if results:
-        st.table({ "Disease": [r["Disease"] for r in results], "Cure": [r["Cure"] for r in results] })
+    st.table({"Plant Disease": [disease], "Suggested Cure": [cure]})
 
-        pdf_file = generate_pdf(results)
-        if pdf_file:
-            st.download_button(
-                label="📄 Download Diagnosis Report (PDF)",
-                data=pdf_file,
-                file_name="plant_diagnosis_report.pdf",
-                mime="application/pdf"
-            )
-    else:
-        st.warning("⚠️ Could not extract structured results. Try again with a different image.")
+    pdf_data = generate_pdf(disease, cure)
+    if pdf_data:
+        st.download_button(
+            label="📄 Download Diagnosis Report (PDF)",
+            data=pdf_data,
+            file_name="plant_diagnosis_report.pdf",
+            mime="application/pdf"
+        )
