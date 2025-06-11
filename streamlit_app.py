@@ -64,27 +64,32 @@ def generate_pdf(results):
         pdf.set_font("Arial", "B", 14)
         pdf.cell(0, 10, "AgroPulse AI - Plant Diagnosis Report", ln=True)
 
+        # Table header
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(90, 10, "Disease", 1)
-        pdf.cell(90, 10, "Cure", 1)
-        pdf.ln()
+        pdf.cell(90, 10, "Disease", 1, 0, 'C')
+        pdf.cell(90, 10, "Cure", 1, 1, 'C')
 
+        # Table rows
         pdf.set_font("Arial", "", 11)
         for item in results:
-            pdf.multi_cell(90, 10, item["Disease"], border=1, align='L', max_line_height=pdf.font_size)
-            x = pdf.get_x()
-            y = pdf.get_y() - 10
-            pdf.set_xy(x + 90, y)
-            pdf.multi_cell(90, 10, item["Cure"], border=1, align='L', max_line_height=pdf.font_size)
+            y_before = pdf.get_y()
+            pdf.multi_cell(90, 10, item["Disease"], border=1)
+            y_after = pdf.get_y()
+            height = y_after - y_before
+
+            pdf.set_xy(100, y_before)
+            pdf.multi_cell(90, 10, item["Cure"], border=1)
             pdf.ln()
 
-        output = BytesIO()
-        pdf.output(output)
-        output.seek(0)
-        return output
+        pdf_output = BytesIO()
+        pdf.output(pdf_output)
+        pdf_output.seek(0)
+        return pdf_output
+
     except Exception as e:
         st.error(f"❌ PDF generation failed: {e}")
         return None
+
 
 # === Streamlit UI ===
 st.set_page_config(page_title="AgroPulse AI", page_icon="🌿")
