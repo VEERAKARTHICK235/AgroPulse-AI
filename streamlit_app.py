@@ -9,7 +9,7 @@ import tempfile
 import os
 
 # 🔐 Gemini API
-GEMINI_API_KEY = "AIzaSyCVDQqukptLYzFObQFieAaUS8uR0nmksJI"  # Replace with your API key
+GEMINI_API_KEY = "AIzaSyCDO1pAumK-k0XuTXRMcqjweuXjeOGujr4"
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
 # Convert image to base64
