@@ -1,5 +1,5 @@
 
-🌿 AgroPulse AI – Gemini-Powered Plant Disease Detector
+🌿 AgroPulse AI – AI-Powered Plant Disease Detector
 
 AgroPulse AI is an intelligent web-based tool that uses Google Gemini 1.5 Flash API to analyze plant leaf images, detect diseases, and recommend treatments. It allows farmers, agriculturists, and researchers to get instant diagnostic reports in a clean, downloadable format.
 
